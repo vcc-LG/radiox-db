@@ -16,16 +16,16 @@ db = client.radio_database
 db.radio_collection.drop()
 collection = db.radio_collection
 
-hosts = ['smart-on-sunday-with-gordon-smart',
-         'x-posure-with-john-kennedy',
-         'johnny-vaughan',
-         'dan-oconnell',
-         'jack-saunders',
-         'the-chris-moyles-show',
-         'toby-tarrant',
-         'issy']
+# hosts = ['smart-on-sunday-with-gordon-smart',
+#          'x-posure-with-john-kennedy',
+#          'johnny-vaughan',
+#          'dan-oconnell',
+#          'jack-saunders',
+#          'the-chris-moyles-show',
+#          'toby-tarrant',
+#          'issy']
 
-# hosts = ['smart-on-sunday-with-gordon-smart']
+hosts = ['smart-on-sunday-with-gordon-smart']
 
 def get_url(date_number,year_in,month_in,host_in):
     return r"http://www.radiox.co.uk/playlist/"+year_in+"/"+month_in+"/"+str(date_number)+"/"+host_in+"/"
@@ -45,9 +45,9 @@ keys = ['date', 'title', 'artist', 'artist_gender', 'song_year', 'country', 'pla
 
 
 for host in hosts:
-    for k in range(len(date_range)):
-    # for k in range(1,2):
-        print(host)
+    # for k in range(len(date_range)):
+    for k in range(1,2):
+        # print(host)
         month = month_range[k]
         day = date_range[k]
         year = year_range[k]
@@ -107,67 +107,97 @@ for host in hosts:
             except AttributeError:
                 continue
         for i in range(len(list_of_artists)):
+            wiki_flag = 0
             # try:
             try:
                 results = d.search(list_of_tracks[i],artist=list_of_artists[i], type='release')
                 release_year = results[0].year
                 release_country = results[0].country
-                try:
-                    artist = list_of_artists[i]
-                    try:
-                        page = wikipedia.page(artist)
-                    except wikipedia.exceptions.DisambiguationError:
-                        page = wikipedia.page(artist + ' (band)')
-                    soup = BeautifulSoup(page.html(),'html.parser')
-                    # origin = soup.find_all('th',string='Origin')[0].nextSibling.find_all('a')[0].text.strip()
-                    # try:
-                    #     members = soup.find_all('th',string='Members')
-                    #     lead_singer = members[0].nextSibling.find_all('li')[0].text.strip()
-                    # except IndexError:
-                    try:
-                        members = soup.find_all('th',string='Members')
-                        lead_singer = members[0].nextSibling.find_all('a')[0].text.strip()
-                    except IndexError:
-                        try:
-                            members = soup.find_all('th',string='Past members')
-                            lead_singer = members[0].nextSibling.find_all('a')[0].text.strip()
-                        except IndexError:
-                            lead_singer = artist
-                    lead_singer_page = wikipedia.page(lead_singer)
-                    lead_singer_page_soup = BeautifulSoup(lead_singer_page.html(),'html.parser')
-                    lead_singer_page_text = lead_singer_page_soup.get_text().lower()
-                    male_count = len(re.findall(r'\bhe\b', lead_singer_page_text)) + len(re.findall(r'\bhis\b', lead_singer_page_text)) + len(re.findall(r'\bhim\b', lead_singer_page_text))
-                    female_count = len(re.findall(r'\bshe\b', lead_singer_page_text))+ len(re.findall(r'\bhers\b', lead_singer_page_text)) + len(re.findall(r'\bher\b', lead_singer_page_text))
-                    artist_gender = ['m' if male_count > female_count else 'f'][0]
-                    # print('here')
-                except:
-                    continue
+            except IndexError:
+                release_year = ''
+                release_country = ''
 
-                insert_dict = dict.fromkeys(keys)
-                insert_dict['date'] = playdate
-                insert_dict['title'] = list_of_tracks[i]
-                insert_dict['artist'] = list_of_artists[i]
-                insert_dict['artist_gender'] = artist_gender
-                insert_dict['song_year'] = release_year
-                insert_dict['country'] = release_country
-                insert_dict['playtime'] = elements_playtime[i].contents[0]
-                insert_dict['host'] = host_name
-                print(insert_dict)
-                insert = collection.insert_one(insert_dict).inserted_id
-                # insert_list = (playdate,
-                #                list_of_tracks[i],
-                #                list_of_artists[i],
-                #                release_year,
-                #                release_country,
-                #                elements_playtime[i].contents[0],
-                #                host_name)
+            artist = list_of_artists[i]
+            print(artist)
                 # try:
-                #     cur.execute("INSERT INTO songs VALUES (?,?,?,?,?,?,?)",insert_list)
-                #     # print(insert_list)
-                # except sqlite3.Error as e:
-                #     print("An error occurred:", e.args[0])
+                #     page = wikipedia.page(artist)
+                # except wikipedia.exceptions.DisambiguationError:
+            try:
+                page = wikipedia.page(artist + ' (band)', auto_suggest=False)
+                artist = artist + ' (band)'
+                wiki_flag = 1
+            except wikipedia.exceptions.PageError:
+                try:
+                    page = wikipedia.page(artist + ' (musician)', auto_suggest=False)
+                    artist = artist + ' (musician)'
+                    wiki_flag = 1
+                except wikipedia.exceptions.PageError:
+                    try:
+                        page = wikipedia.page(artist + ' (band)')
+                        wiki_flag = 1
+                    except wikipedia.exceptions.DisambiguationError:
+                        artist_gender = ''
+                        # pass
+                # search_words = ['band','artist']
+                # if True in [x in page.summary.lower() for x in search_words]:
+                #     wiki_flag = 1
+                #     # pass
+                # else:
+                #     artist_gender = ''
+                    # pass
+            if wiki_flag == 1:
+                soup = BeautifulSoup(page.html(),'html.parser')
+                # origin = soup.find_all('th',string='Origin')[0].nextSibling.find_all('a')[0].text.strip()
+                # try:
+                #     members = soup.find_all('th',string='Members')
+                #     lead_singer = members[0].nextSibling.find_all('li')[0].text.strip()
+                # except IndexError:
+                try:
+                    members = soup.find_all('th',string='Members')
+                    # lead_singer = members[0].nextSibling.find_all('a')[0].text.strip()
+                    lead_singer = members[0].nextSibling.find_all('a')[0]['title']
+                except IndexError:
+                    try:
+                        members = soup.find_all('th',string='Past members')
+                        # lead_singer = members[0].nextSibling.find_all('a')[0].text.strip()
+                        lead_singer = members[0].nextSibling.find_all('a')[0]['title']
+                    except IndexError:
+                        lead_singer = artist
+                lead_singer_page = wikipedia.page(lead_singer)
+                lead_singer_page_soup = BeautifulSoup(lead_singer_page.html(),'html.parser')
+                lead_singer_page_text = lead_singer_page_soup.get_text().lower()
+                male_count = len(re.findall(r'\bhe\b', lead_singer_page_text)) + len(re.findall(r'\bhis\b', lead_singer_page_text)) + len(re.findall(r'\bhim\b', lead_singer_page_text))
+                female_count = len(re.findall(r'\bshe\b', lead_singer_page_text))+ len(re.findall(r'\bhers\b', lead_singer_page_text)) + len(re.findall(r'\bher\b', lead_singer_page_text))
+                artist_gender = ['m' if male_count > female_count else 'f'][0]
+            # print('here')
+
+            insert_dict = dict.fromkeys(keys)
+            insert_dict['date'] = playdate
+            insert_dict['title'] = list_of_tracks[i]
+            insert_dict['artist'] = list_of_artists[i]
+            insert_dict['artist_gender'] = artist_gender
+            insert_dict['song_year'] = release_year
+            insert_dict['country'] = release_country
+            insert_dict['playtime'] = elements_playtime[i].contents[0]
+            insert_dict['host'] = host_name
+            print(insert_dict)
+            try:
+                insert = collection.insert_one(insert_dict).inserted_id
             except:
                 continue
+            # insert_list = (playdate,
+            #                list_of_tracks[i],
+            #                list_of_artists[i],
+            #                release_year,
+            #                release_country,
+            #                elements_playtime[i].contents[0],
+            #                host_name)
+            # try:
+            #     cur.execute("INSERT INTO songs VALUES (?,?,?,?,?,?,?)",insert_list)
+            #     # print(insert_list)
+            # except sqlite3.Error as e:
+            #     print("An error occurred:", e.args[0])
+
 
 # con.commit()
 # if con:
